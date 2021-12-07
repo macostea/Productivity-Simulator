@@ -1,10 +1,10 @@
 extern crate sdl2;
 
-use std::path::Path;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
+use assets_manager::{source::{FileSystem, DirEntry}};
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -26,14 +26,20 @@ fn main() -> Result<(), String> {
 
     let texture_creator = canvas.texture_creator();
 
-    let font = ttf_context.load_font(Path::new("OpenSans-Regular.ttf"), 128)?;
+    let fs = FileSystem::new("assets").map_err(|e| e.to_string())?;
+    let font_file = DirEntry::File("fonts.OpenSans-Regular", "ttf");
+    let font_fs_path = fs.path_of(font_file);
+
+    let font_path = font_fs_path.as_path();
+
+    let font = ttf_context.load_font(font_path, 128)?;
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string())?;
 
     let mut timer = sdl_context.timer()?;
 
-    let mut start: u64 = 0;
-    let mut end: u64 = 0;
+    let mut start: u64;
+    let mut end: u64;
     let mut elapsed: f64 = 0.0;
 
     'running: loop {

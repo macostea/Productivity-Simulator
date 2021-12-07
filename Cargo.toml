@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 sdl2 = { version = "0.35.1", features = ["ttf"] }
+assets_manager = { version = "0.6" }

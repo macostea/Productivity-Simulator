@@ -1,10 +1,20 @@
 extern crate sdl2;
+mod framerate;
 
+use std::path::PathBuf;
+
+use framerate::Framerate;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
-use sdl2::rect::Rect;
 use assets_manager::{source::{FileSystem, DirEntry}};
+
+fn get_framerate_font_path<'a>() -> Result<PathBuf, String> {
+    let fs = FileSystem::new("assets").map_err(|e| e.to_string())?;
+    let font_file = DirEntry::File("fonts.OpenSans-Regular", "ttf");
+    let font_fs_path = fs.path_of(font_file);
+    Ok(font_fs_path)
+}
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -24,26 +34,13 @@ fn main() -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let texture_creator = canvas.texture_creator();
-
-    let fs = FileSystem::new("assets").map_err(|e| e.to_string())?;
-    let font_file = DirEntry::File("fonts.OpenSans-Regular", "ttf");
-    let font_fs_path = fs.path_of(font_file);
-
-    let font_path = font_fs_path.as_path();
-
-    let font = ttf_context.load_font(font_path, 128)?;
+    let font_path = get_framerate_font_path()?;
+    let mut framerate = Framerate::new(&sdl_context, &ttf_context, canvas.texture_creator(), font_path.as_path())?;
 
     let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string())?;
 
-    let mut timer = sdl_context.timer()?;
-
-    let mut start: u64;
-    let mut end: u64;
-    let mut elapsed: f64 = 0.0;
-
     'running: loop {
-        start = timer.performance_counter();
+        framerate.frame_start();
 
         for event in event_pump.poll_iter() {
             match event {
@@ -59,26 +56,10 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
 
-        let surface = font
-            .render(&*format!("FPS: {:.2}", 1.0 / elapsed))
-            .blended(Color::RGB(0, 255, 0))
-            .map_err(|e| e.to_string())?;
+        framerate.draw(&mut canvas)?;
 
-        let texture = texture_creator
-            .create_texture_from_surface(&surface)
-            .map_err(|e| e.to_string())?;
-
-        let target = Rect::new(600, 0, 200, 60);
-        canvas.copy(&texture, None, Some(target))?;
         canvas.present();
-
-        end = timer.performance_counter();
-        elapsed = (end - start) as f64 / timer.performance_frequency() as f64;
-
-        timer.delay((16.666 - elapsed * 1000.0).floor() as u32);
-
-        end = timer.performance_counter();
-        elapsed = (end - start) as f64 / timer.performance_frequency() as f64;
+        framerate.frame_end();
     }
 
     Ok(())
